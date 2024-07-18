@@ -6401,54 +6401,70 @@ GF_Err mp4mx_reload_output(GF_MP4MuxCtx *ctx)
 #ifndef GPAC_DISABLE_ISOM_FRAGMENTS
 static void mp4_process_id3(GF_MovieFragmentBox *moof, const GF_PropertyValue *emsg_prop, u32 id_sequence)
 {
-	GF_EventMessageBox *emsg = (GF_EventMessageBox *)gf_isom_box_new(GF_ISOM_BOX_TYPE_EMSG);
-
-	GF_BitStream *bs = gf_bs_new(emsg_prop->value.data.ptr, emsg_prop->value.data.size, GF_BITSTREAM_READ);
-	GF_ID3_TAG id3_tag;
-
-	if (gf_id3_from_bitstream(&id3_tag, bs) != GF_OK) {
-		GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("Error deserializing ID3 tag."));
-		gf_id3_tag_free(&id3_tag);
-		gf_bs_del(bs);
-		return;
-
-	}
+	GF_List *id3_tag_list = emsg_prop->value.ptr;
 	
-	gf_bs_del(bs);
+	GF_PropertyValue *id3_buffer_prop = gf_list_pop_front(id3_tag_list);
+	while (id3_buffer_prop) {
 
-	emsg->version = 1;
-	emsg->timescale = id3_tag.timescale;
-	emsg->presentation_time_delta = id3_tag.pts;
-	emsg->event_duration = 0xFFFFFFFF;
-	emsg->event_id = id_sequence;
-	emsg->scheme_id_uri = gf_strdup(id3_tag.scheme_uri);
-	emsg->value = gf_strdup(id3_tag.value_uri);
-	emsg->message_data_size = id3_tag.data_length;
-	emsg->message_data = (u8 *)gf_malloc(id3_tag.data_length);
-	memcpy(emsg->message_data, id3_tag.data, id3_tag.data_length);
+		GF_EventMessageBox *emsg = (GF_EventMessageBox *)gf_isom_box_new(GF_ISOM_BOX_TYPE_EMSG);
 
+		GF_BitStream *bs = gf_bs_new(id3_buffer_prop->value.data.ptr, id3_buffer_prop->value.data.size, GF_BITSTREAM_READ);
+		GF_ID3_TAG id3_tag;
+		memset(&id3_tag, 0, sizeof(GF_ID3_TAG));
 
-	// insert only if its presentation time is not already present
-	u32 insert_emsg = GF_TRUE;
-	for (int i=0; i<gf_list_count(moof->emsgs); ++i)
-	{
-		GF_EventMessageBox *existing_emsg = gf_list_get(moof->emsgs, i);
-		if (existing_emsg->presentation_time_delta == emsg->presentation_time_delta) {
-			if (!strcmp(existing_emsg->scheme_id_uri, id3_tag.scheme_uri) && !strcmp(existing_emsg->value, id3_tag.value_uri))
+		if (gf_id3_from_bitstream(&id3_tag, bs) != GF_OK)
+		{
+			GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("Error deserializing ID3 tag."));
+			gf_id3_tag_free(&id3_tag);
+			gf_bs_del(bs);
+			gf_free(id3_buffer_prop);
+			continue;
+		}
+
+		gf_bs_del(bs);
+
+		emsg->version = 1;
+		emsg->timescale = id3_tag.timescale;
+		emsg->presentation_time_delta = id3_tag.pts;
+		emsg->event_duration = 0xFFFFFFFF;
+		emsg->event_id = id_sequence;
+		emsg->scheme_id_uri = gf_strdup(id3_tag.scheme_uri);
+		emsg->value = gf_strdup(id3_tag.value_uri);
+		emsg->message_data_size = id3_tag.data_length;
+		emsg->message_data = (u8 *)gf_malloc(id3_tag.data_length);
+		memcpy(emsg->message_data, id3_tag.data, id3_tag.data_length);
+
+		// insert only if its presentation time is not already present
+		u32 insert_emsg = GF_TRUE;
+		for (int i = 0; i < gf_list_count(moof->emsgs); ++i)
+		{
+			GF_EventMessageBox *existing_emsg = gf_list_get(moof->emsgs, i);
+			if (existing_emsg->presentation_time_delta == emsg->presentation_time_delta)
 			{
-				if (existing_emsg->message_data_size == emsg->message_data_size && !memcmp(existing_emsg->message_data, emsg->message_data, emsg->message_data_size))
-				insert_emsg = GF_FALSE;
-				break;
+				if (!strcmp(existing_emsg->scheme_id_uri, id3_tag.scheme_uri) && !strcmp(existing_emsg->value, id3_tag.value_uri))
+				{
+					if (existing_emsg->message_data_size == emsg->message_data_size && !memcmp(existing_emsg->message_data, emsg->message_data, emsg->message_data_size))
+						insert_emsg = GF_FALSE;
+					break;
+				}
 			}
 		}
+
+		if (insert_emsg == GF_TRUE)
+		{
+			if (!moof->emsgs)
+				moof->emsgs = gf_list_new();
+			gf_list_add(moof->emsgs, emsg);
+		}
+
+		gf_id3_tag_free(&id3_tag);
+
+		// pop next element to process
+		gf_free(id3_buffer_prop);
+		id3_buffer_prop = gf_list_pop_front(id3_tag_list);
 	}
 
-	if (insert_emsg == GF_TRUE) {
-		if (!moof->emsgs) moof->emsgs = gf_list_new();
-		gf_list_add(moof->emsgs, emsg);
-	}
-
-	gf_id3_tag_free(&id3_tag);
+	gf_list_del(id3_tag_list);
 }
 #endif
 
@@ -6621,7 +6637,7 @@ static GF_Err mp4_mux_process_fragmented(GF_MP4MuxCtx *ctx)
 
 			//push ID3 packet properties as emsg
 			const GF_PropertyValue *emsg = gf_filter_pck_get_property_str(pck, "id3");
-			if (emsg && (emsg->type == GF_PROP_DATA) && emsg->value.data.ptr) {
+			if (emsg && (emsg->type == GF_PROP_POINTER) && emsg->value.ptr) {
 				if (emsg != ctx->last_id3_processed) {
 					mp4_process_id3(ctx->file->moof, emsg, ctx->id3_id_sequence);
 					ctx->id3_id_sequence = ctx->id3_id_sequence + 1;

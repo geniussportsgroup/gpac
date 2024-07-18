@@ -34,19 +34,6 @@
 #include <gpac/internal/media_dev.h>
 #include <gpac/id3.h>
 
-// // First 36 bytes of a Nielsen ID3 tag: "ID3\x04\x00 \x00\x00\x02\x05PRIV\x00\x00\x01{\x00\x00www.nielsen.com/"
-// static const u32 NIELSEN_ID3_TAG_PREFIX_LEN = 36;
-// static const u8 NIELSEN_ID3_TAG_PREFIX[] = {0x49, 0x44, 0x33, 0x04, 0x00, 0x20,
-// 											0x00, 0x00, 0x02, 0x05, 0x50, 0x52,
-// 											0x49, 0x56, 0x00, 0x00, 0x01, 0x7B,
-// 											0x00, 0x00, 0x77, 0x77, 0x77, 0x2E,
-// 											0x6E, 0x69, 0x65, 0x6C, 0x73, 0x65,
-// 											0x6E, 0x2E, 0x63, 0x6F, 0x6D, 0x2F};
-
-// static const char *ID3_PROP_SCHEME_URI = "https://aomedia.org/emsg/ID3";
-// static const char *ID3_PROP_VALUE_URI_NIELSEN = "www.nielsen.com:id3:v1";
-// static const char *ID3_PROP_VALUE_URI_DEFAULT = "https://aomedia.org/emsg/ID3";
-
 typedef struct {
 	char *fragment;
 	u32 id;
@@ -663,9 +650,13 @@ static void m2tsdmx_setup_program(GF_M2TSDmxCtx *ctx, GF_M2TS_Program *prog)
 static void m2tdmx_merge_props(GF_FilterPid *pid, GF_M2TS_ES *stream, GF_FilterPacket *pck)
 {
 	if (stream->props) {
+		Bool insert_immediately = GF_TRUE;
+		GF_List *id3_tag_list = NULL;
+
 		char szID[100];
 		while (gf_list_count(stream->props)) {
 			GF_M2TS_Prop *p = gf_list_pop_front(stream->props);
+			insert_immediately = GF_TRUE;
 			switch(p->type) {
 				case M2TS_TEMI_INFO: {
 					GF_M2TS_Prop_TEMIInfo *t = (GF_M2TS_Prop_TEMIInfo*)p;
@@ -675,18 +666,38 @@ static void m2tdmx_merge_props(GF_FilterPid *pid, GF_M2TS_ES *stream, GF_FilterP
 				case M2TS_SCTE35:
 					snprintf(szID, 100, "scte35");
 					break;
-				case M2TS_ID3:
-					snprintf(szID, 100, "id3");
+				case M2TS_ID3: {
+					insert_immediately = GF_FALSE;
+					if (!id3_tag_list) {
+						id3_tag_list = gf_list_new();
+					}
+
+					GF_PropertyValue *id3_prop_value = NULL;
+					GF_SAFEALLOC(id3_prop_value, GF_PropertyValue);
+					id3_prop_value->type = GF_PROP_DATA_NO_COPY;
+					id3_prop_value->value.data.ptr = p->data;
+					id3_prop_value->value.data.size = p->len;
+
+					gf_list_add(id3_tag_list, id3_prop_value);
 					break;
+				}
 				default:
 					GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("[M2TSDmx] unknown property %d - skipping\n", p->type) );
 					gf_free(p);
 					continue;
 			}
 
-			gf_filter_pck_set_property_dyn(pck, szID, &PROP_DATA_NO_COPY(p->data, p->len));
-			gf_free(p);
+			if (insert_immediately) {
+				gf_filter_pck_set_property_dyn(pck, szID, &PROP_DATA_NO_COPY(p->data, p->len));
+				gf_free(p);
+			}
 		}
+
+		if (id3_tag_list) {
+			snprintf(szID, 100, "id3");
+			gf_filter_pck_set_property_dyn(pck, szID, &PROP_POINTER(id3_tag_list));
+		}
+
 		gf_list_del(stream->props);
 		stream->props = NULL;
 
