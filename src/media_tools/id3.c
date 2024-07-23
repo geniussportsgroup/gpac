@@ -15,6 +15,10 @@ static const char *ID3_PROP_VALUE_URI_DEFAULT = "https://aomedia.org/emsg/ID3";
 
 GF_Err gf_id3_tag_new(GF_ID3_TAG *tag, u32 timescale, u64 pts, u8 *data, u32 data_length)
 {
+    if (!tag) {
+        return GF_BAD_PARAM;
+    }
+
     if (data == NULL || data_length == 0) {
         return GF_BAD_PARAM;
     }
@@ -93,6 +97,25 @@ GF_Err gf_id3_to_bitstream(GF_ID3_TAG *tag, GF_BitStream *bs)
     }
 
     return GF_OK;
+}
+
+GF_Err gf_id3_list_to_bitstream(GF_List *tag_list, GF_BitStream *bs) {
+
+    GF_Err err = GF_OK;
+
+    // first, write the number of tags
+    u32 id3_count = gf_list_count(tag_list);
+    gf_bs_write_u32(bs, id3_count);
+
+    for (u32 i = 0; i < id3_count; ++i) {
+        GF_ID3_TAG *tag = gf_list_get(tag_list, i);
+        err = gf_id3_to_bitstream(tag, bs);
+        if (err != GF_OK) {
+            return err;
+        }
+    }
+
+    return err;
 }
 
 GF_Err gf_id3_from_bitstream(GF_ID3_TAG *tag, GF_BitStream *bs)

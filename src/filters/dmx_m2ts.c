@@ -107,6 +107,13 @@ typedef struct
 	u32 nb_stopped_at_init;
 } GF_M2TSDmxCtx;
 
+static void m2tsdmx_prop_free(GF_M2TS_Prop *prop) {
+
+	if (prop->type == M2TS_ID3) {
+		gf_id3_tag_free((GF_ID3_TAG*) prop->data);
+	}
+	gf_free(prop->data);
+}
 
 static void m2tsdmx_estimate_duration(GF_M2TSDmxCtx *ctx, GF_M2TS_ES *stream)
 {
@@ -672,13 +679,8 @@ static void m2tdmx_merge_props(GF_FilterPid *pid, GF_M2TS_ES *stream, GF_FilterP
 						id3_tag_list = gf_list_new();
 					}
 
-					GF_PropertyValue *id3_prop_value = NULL;
-					GF_SAFEALLOC(id3_prop_value, GF_PropertyValue);
-					id3_prop_value->type = GF_PROP_DATA_NO_COPY;
-					id3_prop_value->value.data.ptr = p->data;
-					id3_prop_value->value.data.size = p->len;
-
-					gf_list_add(id3_tag_list, id3_prop_value);
+					// transfer ownership to the ID3 tag to the list
+					gf_list_add(id3_tag_list, p->data);
 					break;
 				}
 				default:
@@ -689,13 +691,37 @@ static void m2tdmx_merge_props(GF_FilterPid *pid, GF_M2TS_ES *stream, GF_FilterP
 
 			if (insert_immediately) {
 				gf_filter_pck_set_property_dyn(pck, szID, &PROP_DATA_NO_COPY(p->data, p->len));
-				gf_free(p);
 			}
+
+			gf_free(p);
 		}
 
 		if (id3_tag_list) {
 			snprintf(szID, 100, "id3");
-			gf_filter_pck_set_property_dyn(pck, szID, &PROP_POINTER(id3_tag_list));
+
+			// Serialize all tags using a single bitstream
+			GF_BitStream *bs = gf_bs_new(NULL, 0, GF_BITSTREAM_WRITE);
+
+			GF_Err err = gf_id3_list_to_bitstream(id3_tag_list, bs);
+			if (err != GF_OK) {
+				GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("[M2TSDmx] Error serializing list of ID3 tags: %s\n", gf_error_to_string(err)));
+			}
+
+			u8 *data_ptr;
+			u32 data_length;
+
+			gf_bs_get_content(bs, &data_ptr, &data_length);
+			gf_filter_pck_set_property_dyn(pck, szID, &PROP_DATA_NO_COPY(data_ptr, data_length));
+
+			// free resources
+			gf_bs_del(bs);
+			GF_ID3_TAG *tag = gf_list_pop_front(id3_tag_list);
+			while(tag) {
+				gf_id3_tag_free(tag);
+				gf_free(tag);
+				tag = gf_list_pop_front(id3_tag_list);
+			}
+			gf_list_del(id3_tag_list);
 		}
 
 		gf_list_del(stream->props);
@@ -1195,7 +1221,6 @@ static void m2tsdmx_on_event(GF_M2TS_Demuxer *ts, u32 evt_type, void *param)
 	case GF_M2TS_EVT_ID3:
 	{
 		GF_M2TS_PES_PCK *pck = (GF_M2TS_PES_PCK*)param;
-		GF_BitStream *bs;
 		GF_M2TS_Prop *t;
 		u32 count = gf_list_count(pck->stream->program->streams);
 		for (i=0; i<count; i++) {
@@ -1216,21 +1241,22 @@ static void m2tsdmx_on_event(GF_M2TS_Demuxer *ts, u32 evt_type, void *param)
 			if (!t) break;
 			t->type = M2TS_ID3;
 
-			GF_ID3_TAG id3_tag;
-			if (gf_id3_tag_new(&id3_tag, 90000, pck->PTS, pck->data, pck->data_len) != GF_OK)
+			GF_ID3_TAG *id3_tag_ptr = NULL;
+			GF_SAFEALLOC(id3_tag_ptr, GF_ID3_TAG);
+			if (!id3_tag_ptr) {
+				gf_free(t);
+				break;
+			}
+
+			if (gf_id3_tag_new(id3_tag_ptr, 90000, pck->PTS, pck->data, pck->data_len) != GF_OK)
 			{
 				GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("[M2TSDMx] Error creating ID3 tag"));
 				break;
 			}
 
-			bs = gf_bs_new(NULL, 0, GF_BITSTREAM_WRITE);
-			if (gf_id3_to_bitstream(&id3_tag, bs) != GF_OK) {
-				GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("[M2TSDMx] Error serializing ID3 property"));
-			}
-
-			gf_bs_get_content(bs, &t->data, &t->len);
-			gf_bs_del(bs);
-			gf_id3_tag_free(&id3_tag);
+			// data will point to the first byte of the ID3 tag struct. See m2tdmx_merge_props
+			// for the serialization process and m2tsdmx_prop_free for freeing up prop resources
+			t->data = (u8*)id3_tag_ptr;
 
 			if (!es->props) {
 				es->props = gf_list_new();
@@ -1286,7 +1312,7 @@ static void m2tsdmx_on_event(GF_M2TS_Demuxer *ts, u32 evt_type, void *param)
 		if (es && es->props) {
 			while (gf_list_count(es->props)) {
 				GF_M2TS_Prop *t = gf_list_pop_back(es->props);
-				gf_free(t->data);
+				m2tsdmx_prop_free(t);
 				gf_free(t);
 			}
 			gf_list_del(es->props);

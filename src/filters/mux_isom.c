@@ -6401,27 +6401,24 @@ GF_Err mp4mx_reload_output(GF_MP4MuxCtx *ctx)
 #ifndef GPAC_DISABLE_ISOM_FRAGMENTS
 static void mp4_process_id3(GF_MovieFragmentBox *moof, const GF_PropertyValue *emsg_prop, u32 id_sequence)
 {
-	GF_List *id3_tag_list = emsg_prop->value.ptr;
-	
-	GF_PropertyValue *id3_buffer_prop = gf_list_pop_front(id3_tag_list);
-	while (id3_buffer_prop) {
+	GF_Err err = GF_OK;
+	GF_ID3_TAG id3_tag;
+	GF_BitStream *bs = gf_bs_new(emsg_prop->value.data.ptr, emsg_prop->value.data.size, GF_BITSTREAM_READ);
 
-		GF_EventMessageBox *emsg = (GF_EventMessageBox *)gf_isom_box_new(GF_ISOM_BOX_TYPE_EMSG);
+	// first, read the number of tags serialized in the bitstream
+	u32 tag_count = gf_bs_read_u32(bs);
+	for (u32 i = 0; i < tag_count; ++i) {
 
-		GF_BitStream *bs = gf_bs_new(id3_buffer_prop->value.data.ptr, id3_buffer_prop->value.data.size, GF_BITSTREAM_READ);
-		GF_ID3_TAG id3_tag;
 		memset(&id3_tag, 0, sizeof(GF_ID3_TAG));
-
-		if (gf_id3_from_bitstream(&id3_tag, bs) != GF_OK)
-		{
-			GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("Error deserializing ID3 tag."));
+		err = gf_id3_from_bitstream(&id3_tag, bs);
+		if (err != GF_OK) {
+			GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("Error deserializing ID3 tag: %s", gf_error_to_string(err)));
 			gf_id3_tag_free(&id3_tag);
 			gf_bs_del(bs);
-			gf_free(id3_buffer_prop);
-			continue;
+			return;
 		}
 
-		gf_bs_del(bs);
+		GF_EventMessageBox *emsg = (GF_EventMessageBox *)gf_isom_box_new(GF_ISOM_BOX_TYPE_EMSG);
 
 		emsg->version = 1;
 		emsg->timescale = id3_tag.timescale;
@@ -6450,21 +6447,18 @@ static void mp4_process_id3(GF_MovieFragmentBox *moof, const GF_PropertyValue *e
 			}
 		}
 
-		if (insert_emsg == GF_TRUE)
-		{
+		if (insert_emsg == GF_TRUE) {
 			if (!moof->emsgs)
 				moof->emsgs = gf_list_new();
 			gf_list_add(moof->emsgs, emsg);
+		} else {
+			gf_isom_box_del((GF_Box*)emsg);
 		}
 
 		gf_id3_tag_free(&id3_tag);
-
-		// pop next element to process
-		gf_free(id3_buffer_prop);
-		id3_buffer_prop = gf_list_pop_front(id3_tag_list);
 	}
 
-	gf_list_del(id3_tag_list);
+	gf_bs_del(bs);
 }
 #endif
 
@@ -6637,7 +6631,7 @@ static GF_Err mp4_mux_process_fragmented(GF_MP4MuxCtx *ctx)
 
 			//push ID3 packet properties as emsg
 			const GF_PropertyValue *emsg = gf_filter_pck_get_property_str(pck, "id3");
-			if (emsg && (emsg->type == GF_PROP_POINTER) && emsg->value.ptr) {
+			if (emsg && (emsg->type == GF_PROP_DATA) && emsg->value.ptr) {
 				if (emsg != ctx->last_id3_processed) {
 					mp4_process_id3(ctx->file->moof, emsg, ctx->id3_id_sequence);
 					ctx->id3_id_sequence = ctx->id3_id_sequence + 1;
