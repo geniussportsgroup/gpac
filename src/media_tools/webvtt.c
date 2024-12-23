@@ -298,7 +298,7 @@ static GF_Err wvtt_write_cue(GF_BitStream *bs, GF_WebVTTCue *cue)
 	return e;
 }
 
-GF_ISOSample *gf_isom_webvtt_to_sample(void *s)
+GF_ISOSample* gf_isom_webvtt_to_sample(void *s)
 {
 	GF_Err e = GF_OK;
 	GF_ISOSample *res;
@@ -413,14 +413,6 @@ GF_Err wvtt_box_dump(GF_Box *a, FILE * trace)
 #endif /* GPAC_DISABLE_ISOM_DUMP */
 
 #endif /*GPAC_DISABLE_ISOM*/
-
-typedef enum {
-	WEBVTT_PARSER_STATE_WAITING_SIGNATURE,
-	WEBVTT_PARSER_STATE_WAITING_HEADER,
-	WEBVTT_PARSER_STATE_WAITING_CUE,
-	WEBVTT_PARSER_STATE_WAITING_CUE_TIMESTAMP,
-	WEBVTT_PARSER_STATE_WAITING_CUE_PAYLOAD
-} GF_WebVTTParserState;
 
 struct _webvtt_parser {
 	GF_WebVTTParserState state;
@@ -556,6 +548,10 @@ u64 gf_webvtt_sample_get_end(GF_WebVTTSample * samp)
 	return samp->end;
 }
 
+GF_List* gf_webvtt_sample_get_cues(GF_WebVTTSample * samp) {
+	return samp->cues;
+}
+
 void gf_webvtt_sample_del(GF_WebVTTSample * samp)
 {
 	while (gf_list_count(samp->cues)) {
@@ -609,6 +605,10 @@ GF_Err gf_webvtt_parser_init(GF_WebVTTParser *parser, FILE *vtt_file, s32 unicod
 void gf_webvtt_parser_suspend(GF_WebVTTParser *vttparser)
 {
 	vttparser->suspend = GF_TRUE;
+}
+
+void gf_webvtt_parser_force_state(GF_WebVTTParser *parser, GF_WebVTTParserState state) {
+	parser->state = state;
 }
 
 void gf_webvtt_parser_restart(GF_WebVTTParser *parser)
@@ -1185,6 +1185,7 @@ void gf_webvtt_parser_not_done(GF_WebVTTParser *parser)
 
 GF_Err gf_webvtt_parser_flush(GF_WebVTTParser *parser)
 {
+	GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("gf_webvtt_parser_flush: %u\n", gf_list_count(parser->samples)));
 	while (gf_list_count(parser->samples) > 0) {
 		GF_WebVTTSample *sample = (GF_WebVTTSample *)gf_list_get(parser->samples, 0);
 		parser->last_duration = (sample->end > sample->start) ? sample->end - sample->start : 0;
@@ -1512,6 +1513,7 @@ GF_Err gf_webvtt_dump_iso_sample(FILE *dump, u32 timescale, GF_ISOSample *iso_sa
 #ifndef GPAC_DISABLE_ISOM
 GF_Err gf_webvtt_parser_finalize(GF_WebVTTParser *parser, u64 duration)
 {
+	GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("gf_webvtt_parser_finalize: %u\n", gf_list_count(parser->samples)));
 	GF_WebVTTSample *sample;
 	gf_assert(gf_list_count(parser->samples) <= 1);
 	sample = (GF_WebVTTSample *)gf_list_get(parser->samples, 0);

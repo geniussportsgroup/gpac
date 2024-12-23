@@ -103,6 +103,8 @@ REG_DEC(writegen)
 REG_DEC(ufnalu)
 REG_DEC(writeqcp)
 REG_DEC(ufvtt)
+REG_DEC(rftsvtt)
+REG_DEC(passthrough)
 REG_DEC(nhntw)
 REG_DEC(nhmlw)
 REG_DEC(vobsubdmx)
@@ -205,7 +207,7 @@ typedef struct
 
 #define REG_IT(__n) { #__n , __n##_register }
 
-BuiltinReg BuiltinFilters [] = {
+BuiltinReg BuiltinFilters[] = {
 	REG_IT(inspect),
 	REG_IT(probe),
 	REG_IT(compositor),
@@ -270,6 +272,8 @@ BuiltinReg BuiltinFilters [] = {
 	REG_IT(ufnalu),
 	REG_IT(writeqcp),
 	REG_IT(ufvtt),
+	REG_IT(rftsvtt),
+	REG_IT(passthrough),
 	REG_IT(nhntw),
 	REG_IT(nhmlw),
 	REG_IT(vobsubdmx),
