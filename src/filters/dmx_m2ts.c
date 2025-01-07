@@ -486,7 +486,6 @@ static void m2tsdmx_declare_pid(GF_M2TSDmxCtx *ctx, GF_M2TS_PES *stream, GF_ESD 
 		if (esd->decoderConfig && (esd->decoderConfig->streamType==GF_STREAM_OD))
 			stream->flags |= GF_M2TS_ES_IS_MPEG4_OD;
 	} else {
-		// TODO: Adarve this is the path for WVTT
 		gf_filter_pid_set_property(opid, GF_PROP_PID_STREAM_TYPE, &PROP_UINT(stype) );
 		gf_filter_pid_set_property(opid, GF_PROP_PID_CODECID, &PROP_UINT(codecid) );
 
@@ -753,10 +752,7 @@ static void m2tsdmx_send_packet(GF_M2TSDmxCtx *ctx, GF_M2TS_PES_PCK *pck)
 	/*pcr not initialized, don't send any data*/
 //	if (! pck->stream->program->first_dts) return;
 
-	// if (pck->stream->pid == 65) GF_LOG(GF_LOG_ERROR, GF_LOG_CONDITION, ("m2tsdmx_send_packet: PID 65"));
-
 	if (!pck->stream->user) {
-		if (pck->stream->pid == 65) GF_LOG(GF_LOG_ERROR, GF_LOG_CONDITION, ("m2tsdmx_send_packet: no opid"));
 		return;
 	}
 	opid = pck->stream->user;
