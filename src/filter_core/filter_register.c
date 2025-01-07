@@ -104,7 +104,6 @@ REG_DEC(ufnalu)
 REG_DEC(writeqcp)
 REG_DEC(ufvtt)
 REG_DEC(rftsvtt)
-REG_DEC(passthrough)
 REG_DEC(nhntw)
 REG_DEC(nhmlw)
 REG_DEC(vobsubdmx)
@@ -273,7 +272,6 @@ BuiltinReg BuiltinFilters[] = {
 	REG_IT(writeqcp),
 	REG_IT(ufvtt),
 	REG_IT(rftsvtt),
-	REG_IT(passthrough),
 	REG_IT(nhntw),
 	REG_IT(nhmlw),
 	REG_IT(vobsubdmx),
