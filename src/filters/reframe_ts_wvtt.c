@@ -35,13 +35,16 @@
 
 #ifndef GPAC_DISABLE_VTT
 
+
+#define REFRAME_TS_WVTT_DEFAULT_TIMESCALE 90000
+
 ///////////////////////////////////////////////////////////////////////////////
 
 typedef struct
 {
+    u32 timescale;
     GF_FilterPid *ipid;
     GF_FilterPid *opid;
-
 } GF_ReframeTsVttCtx;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -63,6 +66,7 @@ static void reframe_ts_wvtt_parse_callback_sample(void *user, GF_WebVTTSample *s
         return;
     }
 
+    // in milliseconds
     u64 start = gf_webvtt_sample_get_start(sample);
     u64 end = gf_webvtt_sample_get_end(sample);
 
@@ -92,15 +96,12 @@ static void reframe_ts_wvtt_parse_callback_sample(void *user, GF_WebVTTSample *s
         if (pck)
         {
             memcpy(pck_data, iso_sample->data, iso_sample->dataLength);
-
-            // TODO: receive GF_PROP_PID_TIMESCALE
-            gf_filter_pck_set_cts(pck, (u64)(90000 * start / 1000));
+            gf_filter_pck_set_cts(pck, (u64)(ctx->timescale * start / 1000));
             gf_filter_pck_set_sap(pck, GF_FILTER_SAP_1);
 
             if (end && (end >= start))
             {
-                // TODO: receive GF_PROP_PID_TIMESCALE
-                gf_filter_pck_set_duration(pck, (u32)(90000 * (end - start) / 1000));
+                gf_filter_pck_set_duration(pck, (u32)(ctx->timescale * (end - start) / 1000));
             }
             gf_filter_pck_send(pck);
         }
@@ -114,7 +115,6 @@ static void reframe_ts_wvtt_parse_callback_sample(void *user, GF_WebVTTSample *s
 static void reframe_ts_wvtt_cue_callback(void *user, GF_WebVTTCue *cue) {
     // nothing to do
 }
-
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -153,6 +153,14 @@ GF_Err reframe_ts_wvtt_configure_pid(GF_Filter *filter, GF_FilterPid *pid, Bool 
 
     char *pid_name = gf_filter_pid_get_name(pid);
 
+    GF_PropertyValue* timescale = gf_filter_pid_get_property(pid, GF_PROP_PID_TIMESCALE);
+    if (!timescale) {
+        GF_LOG(GF_LOG_WARNING, GF_LOG_CONTAINER, ("reframe_ts_wvtt_configure_pid: no timescale using default value\n"));
+        ctx->timescale = REFRAME_TS_WVTT_DEFAULT_TIMESCALE;
+    } else {
+        ctx->timescale = timescale->value.uint;
+    }
+
     ctx->ipid = pid;
     ctx->opid = gf_filter_pid_new(filter);
 
@@ -162,7 +170,7 @@ GF_Err reframe_ts_wvtt_configure_pid(GF_Filter *filter, GF_FilterPid *pid, Bool 
     gf_filter_pid_set_property(ctx->opid, GF_PROP_PID_STREAM_TYPE, &PROP_UINT(GF_STREAM_TEXT));
     gf_filter_pid_set_property(ctx->opid, GF_PROP_PID_CODECID, &PROP_UINT(GF_CODECID_WEBVTT));
     gf_filter_pid_set_property(ctx->opid, GF_PROP_PID_UNFRAMED, &PROP_BOOL(GF_FALSE));
-    gf_filter_pid_set_property(ctx->opid, GF_PROP_PID_TIMESCALE, &PROP_UINT(90000));
+    gf_filter_pid_set_property(ctx->opid, GF_PROP_PID_TIMESCALE, &PROP_UINT(ctx->timescale));
 
     return GF_OK;
 }

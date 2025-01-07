@@ -1513,7 +1513,6 @@ GF_Err gf_webvtt_dump_iso_sample(FILE *dump, u32 timescale, GF_ISOSample *iso_sa
 #ifndef GPAC_DISABLE_ISOM
 GF_Err gf_webvtt_parser_finalize(GF_WebVTTParser *parser, u64 duration)
 {
-	GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("gf_webvtt_parser_finalize: %u\n", gf_list_count(parser->samples)));
 	GF_WebVTTSample *sample;
 	gf_assert(gf_list_count(parser->samples) <= 1);
 	sample = (GF_WebVTTSample *)gf_list_get(parser->samples, 0);
