@@ -423,7 +423,7 @@ static void m2tsdmx_declare_pid(GF_M2TSDmxCtx *ctx, GF_M2TS_PES *stream, GF_ESD 
 			return; //ignore actively: these streams will be attached verbatim as properties to audio and/or video packets
 		case GF_M2TS_METADATA_WVTT:
 			stype = GF_STREAM_TEXT;
-			codecid = GF_CODECID_SIMPLE_TEXT;
+			codecid = GF_M2TS_META_WVTT;
 			stream->flags |= GF_M2TS_ES_FULL_AU;
 			break;
 		default:
@@ -433,19 +433,16 @@ static void m2tsdmx_declare_pid(GF_M2TSDmxCtx *ctx, GF_M2TS_PES *stream, GF_ESD 
 	}
 
 	opid = NULL;
-	GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("[M2TSDmx] m2tsdmx_declare_pid: searching for output PID for stream %d\n", stream->pid));
 	for (i=0; i<gf_filter_get_opid_count(ctx->filter); i++) {
 		opid = gf_filter_get_opid(ctx->filter, i);
 		const GF_PropertyValue *p = gf_filter_pid_get_property(opid, GF_PROP_PID_ID);
 		if (p && (p->value.uint == stream->pid)) {
-			GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("[M2TSDmx] m2tsdmx_declare_pid: output PID found\n"));
 			break;
 		}
 		opid = NULL;
 	}
 
 	if (!opid) {
-		GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("[M2TSDmx] m2tsdmx_declare_pid: creating output PID for stream %d\n", stream->pid));
 		opid = gf_filter_pid_new(ctx->filter);
 	}
 
@@ -469,8 +466,6 @@ static void m2tsdmx_declare_pid(GF_M2TSDmxCtx *ctx, GF_M2TS_PES *stream, GF_ESD 
 
 	gf_filter_pid_set_property(opid, GF_PROP_PID_ID, &PROP_UINT(stream->pid) );
 	gf_filter_pid_set_property(opid, GF_PROP_PID_ESID, stream->mpeg4_es_id ? &PROP_UINT(stream->mpeg4_es_id) : NULL);
-
-	GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("[M2TSDmx] m2tsdmx_declare_pid: output PID \"%s\" created for TS stream %d\n", szName, stream->pid));
 
 	if (m4sys_stream) {
 		if (stream->slcfg) gf_free(stream->slcfg);
@@ -509,11 +504,7 @@ static void m2tsdmx_declare_pid(GF_M2TSDmxCtx *ctx, GF_M2TS_PES *stream, GF_ESD 
 		gf_filter_pid_set_property(opid, GF_PROP_PID_TIMESCALE, &PROP_UINT(90000) );
 		gf_filter_pid_set_property(opid, GF_PROP_PID_CLOCK_ID, &PROP_UINT(stream->program->pcr_pid) );
 
-		GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("[M2TSDmx] m2tsdmx_declare_pid: checking (stream->flags&GF_M2TS_ES_IS_PES) && stream->gpac_meta_dsi\n"));
 		if ((stream->flags&GF_M2TS_ES_IS_PES) && stream->gpac_meta_dsi) {
-			// TODO: Adarve, WVTT does not take this path
-			GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("[M2TSDmx] m2tsdmx_declare_pid: PASSED\n"));
-
 			char *cname;
 			GF_BitStream *bs = gf_bs_new(stream->gpac_meta_dsi, stream->gpac_meta_dsi_size, GF_BITSTREAM_READ);
 			u32 val = gf_bs_read_u32(bs); //codec ID (meta codec identifier)
@@ -608,8 +599,6 @@ static void m2tsdmx_declare_pid(GF_M2TSDmxCtx *ctx, GF_M2TS_PES *stream, GF_ESD 
 	}
 
 	m2tsdmx_update_sdt(ctx->ts, opid);
-
-	GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("[M2TSDmx] m2tsdmx_declare_pid: setting default PES framing\n"));
 	gf_m2ts_set_pes_framing((GF_M2TS_PES *)stream, GF_M2TS_PES_FRAMING_DEFAULT);
 }
 
@@ -1363,8 +1352,6 @@ static GF_Err m2tsdmx_configure_pid(GF_Filter *filter, GF_FilterPid *pid, Bool i
 		}
 		return GF_OK;
 	}
-
-	GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("[M2TSDMx] m2tsdmx_configure_pid: checking caps for pid \"%s\"\n", gf_filter_pid_get_name(pid)));
 
 	if (! gf_filter_pid_check_caps(pid)) {
 		GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("[M2TSDMx] caps not supported \"%s\"\n", gf_filter_pid_get_name(pid)));

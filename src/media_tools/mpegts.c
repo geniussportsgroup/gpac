@@ -3037,7 +3037,6 @@ GF_Err gf_m2ts_set_pes_framing(GF_M2TS_PES *pes, GF_M2TSPesFraming mode)
 			pes->reframe = gf_m2ts_reframe_add_prop;
 			break;
 
-		// TODO: Adarve check what to do with WVTT regarding the reframing
 		case GF_M2TS_METADATA_WVTT:
 			pes->reframe = gf_m2ts_reframe_default;
 			break;

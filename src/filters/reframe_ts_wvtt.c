@@ -27,6 +27,7 @@
 #include <gpac/constants.h>
 #include <gpac/bitstream.h>
 #include <gpac/webvtt.h>
+#include <gpac/mpegts.h>
 #include <gpac/internal/media_dev.h>
 #include <gpac/internal/isomedia_dev.h>
 
@@ -38,29 +39,6 @@
 
 typedef struct
 {
-    // // opts
-    // Bool exporter, merge_cues;
-
-    // // only one input pid declared
-    // GF_FilterPid *ipid;
-    // // only one output pid declared
-    // GF_FilterPid *opid;
-
-    // u32 codecid;
-    // u32 timescale;
-
-    // GF_Fraction64 duration;
-    // s64 delay;
-
-    // u8 *cues_buffer;
-    // u32 cues_buffer_size;
-
-    // GF_WebVTTParser *parser;
-
-    // GF_FilterPacket *src_pck;
-    // Bool dash_mode;
-    // u32 seg_pck_in, seg_pck_out;
-
     GF_FilterPid *ipid;
     GF_FilterPid *opid;
 
@@ -76,8 +54,7 @@ static GF_Err reframe_ts_wvtt_parse_callback_report(void *user, GF_Err e, char *
 
 static void reframe_ts_wvtt_parse_callback_header(void *user, const char *config)
 {
-    // GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("reframe_ts_wvtt_parse_callback_header: %s\n", config));
-    // nothing to d
+    // nothing to do
 }
 
 static void reframe_ts_wvtt_parse_callback_sample(void *user, GF_WebVTTSample *sample) {
@@ -103,8 +80,6 @@ static void reframe_ts_wvtt_parse_callback_sample(void *user, GF_WebVTTSample *s
         return;
     }
 
-    // u64 start = gf_webvtt_sample_get_start(sample);
-    // u64 end = gf_webvtt_sample_get_end(sample);
     GF_ISOSample *iso_sample = NULL;
     iso_sample = gf_isom_webvtt_to_sample(sample);
 
@@ -137,7 +112,7 @@ static void reframe_ts_wvtt_parse_callback_sample(void *user, GF_WebVTTSample *s
 }
 
 static void reframe_ts_wvtt_cue_callback(void *user, GF_WebVTTCue *cue) {
-    GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("reframe_ts_wvtt_cue_callback:\n"));
+    // nothing to do
 }
 
 
@@ -147,18 +122,11 @@ static void reframe_ts_wvtt_cue_callback(void *user, GF_WebVTTCue *cue) {
 
 static GF_Err reframe_ts_wvtt_initialize(GF_Filter *filter)
 {
-    // GF_ReframeTsVttCtx *ctx = (GF_ReframeTsVttCtx *)gf_filter_get_udta(filter);
-
-    // initialize any internal attribute in ctx
-    // ctx->parser = gf_webvtt_parser_new();
-    // gf_webvtt_parser_cue_callback(ctx->parser, reframe_ts_wvtt_cue_callback, ctx);
-
     return GF_OK;
 }
 
 GF_Err reframe_ts_wvtt_configure_pid(GF_Filter *filter, GF_FilterPid *pid, Bool is_remove)
 {
-    GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("reframe_ts_wvtt_configure_pid\n"));
     GF_ReframeTsVttCtx *ctx = gf_filter_get_udta(filter);
 
     if (is_remove)
@@ -183,16 +151,14 @@ GF_Err reframe_ts_wvtt_configure_pid(GF_Filter *filter, GF_FilterPid *pid, Bool 
         return GF_NOT_SUPPORTED;
     }
 
-    GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("reframe_ts_wvtt_configure_pid: OK\n"));
-
     char *pid_name = gf_filter_pid_get_name(pid);
-    GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("reframe_ts_wvtt_configure_pid: PID name: %s\n", pid_name));
 
     ctx->ipid = pid;
     ctx->opid = gf_filter_pid_new(filter);
 
     // configure output PID properties
     gf_filter_pid_set_property(ctx->opid, GF_PROP_PID_DECODER_CONFIG, &PROP_DATA((u8 *)"WEBVTT", 7));
+    gf_filter_pid_set_property(ctx->opid, GF_PROP_PID_MIME, &PROP_DATA((u8 *)"text/vtt", 9));
     gf_filter_pid_set_property(ctx->opid, GF_PROP_PID_STREAM_TYPE, &PROP_UINT(GF_STREAM_TEXT));
     gf_filter_pid_set_property(ctx->opid, GF_PROP_PID_CODECID, &PROP_UINT(GF_CODECID_WEBVTT));
     gf_filter_pid_set_property(ctx->opid, GF_PROP_PID_UNFRAMED, &PROP_BOOL(GF_FALSE));
@@ -278,27 +244,15 @@ static void reframe_ts_wvtt_finalize(GF_Filter *filter)
 
 static const GF_FilterCapability ReframeTsVttCaps[] =
     {
-        // receive a text stream without any codec
-        CAP_UINT(GF_CAPS_INPUT_OUTPUT, GF_PROP_PID_STREAM_TYPE, GF_STREAM_TEXT),
-        CAP_UINT(GF_CAPS_INPUT, GF_PROP_PID_CODECID, GF_CODECID_SIMPLE_TEXT),
+        // receive a text stream using the custom 4CC code for WVTT in TS
+        CAP_UINT(GF_CAPS_INPUT, GF_PROP_PID_STREAM_TYPE, GF_STREAM_TEXT),
+        CAP_UINT(GF_CAPS_INPUT, GF_PROP_PID_CODECID, GF_M2TS_META_WVTT),
 
-        // TODO: then, produce a Metadata stream with WebVTT cues
-        // CAP_UINT(GF_CAPS_OUTPUT, GF_PROP_PID_STREAM_TYPE, GF_STREAM_TEXT),
-        // CAP_UINT(GF_CAPS_OUTPUT, GF_PROP_PID_CODECID, GF_CODECID_SIMPLE_TEXT),
+        // then, produce a Metadata stream with WebVTT cues
+        CAP_UINT(GF_CAPS_OUTPUT, GF_PROP_PID_STREAM_TYPE, GF_STREAM_TEXT),
         CAP_UINT(GF_CAPS_OUTPUT, GF_PROP_PID_CODECID, GF_CODECID_WEBVTT),
         CAP_BOOL(GF_CAPS_OUTPUT, GF_PROP_PID_UNFRAMED, GF_FALSE),
-        // CAP_BOOL(GF_CAPS_OUTPUT_EXCLUDED, GF_PROP_PID_UNFRAMED, GF_TRUE),
         {0},
-
-        // CAP_UINT(GF_CAPS_INPUT_EXCLUDED, GF_PROP_PID_STREAM_TYPE, GF_STREAM_FILE),
-        // CAP_BOOL(GF_CAPS_INPUT_EXCLUDED, GF_PROP_PID_UNFRAMED, GF_TRUE),
-        // CAP_UINT(GF_CAPS_INPUT_EXCLUDED, GF_PROP_PID_CODECID, GF_CODECID_NONE),
-        // CAP_UINT(GF_CAPS_OUTPUT_EXCLUDED, GF_PROP_PID_STREAM_TYPE, GF_STREAM_FILE),
-        // CAP_UINT(GF_CAPS_OUTPUT_EXCLUDED, GF_PROP_PID_CODECID, GF_CODECID_NONE),
-
-        // CAP_BOOL(GF_CAPS_INPUT, GF_PROP_PID_UNFRAMED, GF_TRUE), // without this caps, it connects to the TS demuxer
-        // CAP_BOOL(GF_CAPS_INPUT_EXCLUDED, GF_PROP_PID_UNFRAMED, GF_TRUE),
-        // CAP_BOOL(GF_CAPS_OUTPUT, GF_PROP_PID_UNFRAMED, GF_TRUE),
 };
 
 #define OFFS(_n) #_n, offsetof(GF_ReframeTsVttCtx, _n)
