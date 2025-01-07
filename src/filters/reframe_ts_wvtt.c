@@ -1,28 +1,3 @@
-/*
- *			GPAC - Multimedia Framework C SDK
- *
- *			Authors: Jean Le Feuvre
- *			Copyright (c) Telecom ParisTech 2000-2023
- *					All rights reserved
- *
- *  This file is part of GPAC / WebVTT stream unframer filter
- *
- *  GPAC is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU Lesser General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  GPAC is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU Lesser General Public License for more details.
- *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *
- */
-
 #include <gpac/filters.h>
 #include <gpac/constants.h>
 #include <gpac/bitstream.h>
@@ -211,33 +186,12 @@ GF_Err reframe_ts_wvtt_process(GF_Filter *filter)
     gf_filter_pid_drop_packet(ctx->ipid);
     fclose(mem_file);
 
-    ///////////////////////////////////////////////////////
-
-    // GF_FilterPacket *dst = gf_filter_pck_new_alloc(ctx->opid, 0, NULL);
-
-    // u8 *dst_data = NULL;
-    // GF_FilterPacket *dst_pck = gf_filter_pck_new_copy(ctx->opid, pck, &dst_data);
-
-    // gf_filter_pck_send(dst_pck);
-    // gf_filter_pid_drop_packet(ctx->ipid);
-
     return GF_OK;
 }
 
 static void reframe_ts_wvtt_finalize(GF_Filter *filter)
 {
-    // GF_ReframeTsVttCtx *ctx = gf_filter_get_udta(filter);
-    // if (ctx->cues_buffer)
-    //     gf_free(ctx->cues_buffer);
-
-    // if (ctx->parser)
-    //     gf_webvtt_parser_del(ctx->parser);
-
-    // if (ctx->src_pck)
-    // {
-    //     gf_filter_pck_unref(ctx->src_pck);
-    //     ctx->src_pck = NULL;
-    // }
+    // nothing to do
 }
 
 static const GF_FilterCapability ReframeTsVttCaps[] =
