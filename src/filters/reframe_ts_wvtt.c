@@ -70,16 +70,6 @@ static void reframe_ts_wvtt_parse_callback_sample(void *user, GF_WebVTTSample *s
     u64 start = gf_webvtt_sample_get_start(sample);
     u64 end = gf_webvtt_sample_get_end(sample);
 
-    ///////////////////////////////////////////////////////
-    // GF_List* cues = gf_webvtt_sample_get_cues(sample);
-
-    // for (u32 i = 0; i < gf_list_count(cues); i++) {
-    //     GF_WebVTTCue *cue = (GF_WebVTTCue *)gf_list_get(cues, i);
-    //     GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("reframe_ts_wvtt_parse_callback_sample: %llu -> %llu cue: %u: %s\n", start, end, i, cue->text));
-    //     // reframe_ts_wvtt_cue_callback(user, cue);
-    // }
-    ///////////////////////////////////////////////////////
-
     if (!gf_isom_webvtt_cues_count(sample)) {
         return;
     }

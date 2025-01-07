@@ -1162,7 +1162,6 @@ GF_Err gf_webvtt_parser_finalize(GF_WebVTTParser *parser, u64 duration);
 void gf_webvtt_sample_del(GF_WebVTTSample * samp);
 u64 gf_webvtt_sample_get_start(GF_WebVTTSample * samp);
 u64 gf_webvtt_sample_get_end(GF_WebVTTSample * samp);
-GF_List* gf_webvtt_sample_get_cues(GF_WebVTTSample * samp);
 
 
 

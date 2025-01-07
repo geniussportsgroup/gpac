@@ -548,10 +548,6 @@ u64 gf_webvtt_sample_get_end(GF_WebVTTSample * samp)
 	return samp->end;
 }
 
-GF_List* gf_webvtt_sample_get_cues(GF_WebVTTSample * samp) {
-	return samp->cues;
-}
-
 void gf_webvtt_sample_del(GF_WebVTTSample * samp)
 {
 	while (gf_list_count(samp->cues)) {
