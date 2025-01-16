@@ -803,9 +803,6 @@ static void m2tsdmx_send_packet(GF_M2TSDmxCtx *ctx, GF_M2TS_PES_PCK *pck)
 #endif
 	}
 
-
-	// if (pck->stream->pid == 65) GF_LOG(GF_LOG_ERROR, GF_LOG_CONDITION, ("m2tsdmx_send_packet: creating packet %llu\n", len));
-
 	dst_pck = gf_filter_pck_new_alloc(opid, len, &data);
 	if (!dst_pck) return;
 	memcpy(data, ptr, len);
