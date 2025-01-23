@@ -77,10 +77,6 @@ static void reframe_ts_wvtt_parse_callback_sample(void *user, GF_WebVTTSample *s
     gf_webvtt_sample_del(sample);
 }
 
-static void reframe_ts_wvtt_cue_callback(void *user, GF_WebVTTCue *cue) {
-    // nothing to do
-}
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // Filter callbacks
@@ -110,15 +106,13 @@ GF_Err reframe_ts_wvtt_configure_pid(GF_Filter *filter, GF_FilterPid *pid, Bool 
         return GF_NOT_SUPPORTED;
     }
 
-    GF_PropertyValue *p = gf_filter_pid_get_property(pid, GF_PROP_PID_CODECID);
+    const GF_PropertyValue *p = gf_filter_pid_get_property(pid, GF_PROP_PID_CODECID);
     if (!p) {
         GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("reframe_ts_wvtt_configure_pid: no codec id\n"));
         return GF_NOT_SUPPORTED;
     }
 
-    char *pid_name = gf_filter_pid_get_name(pid);
-
-    GF_PropertyValue* timescale = gf_filter_pid_get_property(pid, GF_PROP_PID_TIMESCALE);
+    const GF_PropertyValue* timescale = gf_filter_pid_get_property(pid, GF_PROP_PID_TIMESCALE);
     if (!timescale) {
         GF_LOG(GF_LOG_WARNING, GF_LOG_CONTAINER, ("reframe_ts_wvtt_configure_pid: no timescale using default value\n"));
         ctx->timescale = REFRAME_TS_WVTT_DEFAULT_TIMESCALE;
@@ -146,10 +140,6 @@ GF_Err reframe_ts_wvtt_process(GF_Filter *filter)
     GF_FilterPacket *pck = NULL;
     u32 pck_size;
     u8 *pck_data = NULL;
-    // u64 start_ts, end_ts;
-    
-    // GF_List *cues;
-    // Bool keep_ref = GF_TRUE;
 
     pck = gf_filter_pid_get_packet(ctx->ipid);
     if (!pck) {
@@ -161,7 +151,6 @@ GF_Err reframe_ts_wvtt_process(GF_Filter *filter)
     }
 
     pck_data = (char *)gf_filter_pck_get_data(pck, &pck_size);
-    // GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("reframe_ts_wvtt_process: len %d\n", pck_size));
 
 
     ///////////////////////////////////////////////////////
@@ -195,7 +184,7 @@ static void reframe_ts_wvtt_finalize(GF_Filter *filter)
 }
 
 static const GF_FilterCapability ReframeTsVttCaps[] =
-    {
+{
         // receive a text stream using the custom 4CC code for WVTT in TS
         CAP_UINT(GF_CAPS_INPUT, GF_PROP_PID_STREAM_TYPE, GF_STREAM_TEXT),
         CAP_UINT(GF_CAPS_INPUT, GF_PROP_PID_CODECID, GF_M2TS_META_WVTT),
