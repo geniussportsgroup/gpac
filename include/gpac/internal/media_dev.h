@@ -1128,6 +1128,15 @@ void gf_media_format_ttxt_sdp(GP_RTPPacketizer *builder, char *payload_name, cha
 
 
 #ifndef GPAC_DISABLE_VTT
+#include <gpac/webvtt.h>
+
+typedef enum {
+	WEBVTT_PARSER_STATE_WAITING_SIGNATURE,
+	WEBVTT_PARSER_STATE_WAITING_HEADER,
+	WEBVTT_PARSER_STATE_WAITING_CUE,
+	WEBVTT_PARSER_STATE_WAITING_CUE_TIMESTAMP,
+	WEBVTT_PARSER_STATE_WAITING_CUE_PAYLOAD
+} GF_WebVTTParserState;
 
 typedef struct _webvtt_parser GF_WebVTTParser;
 typedef struct _webvtt_sample GF_WebVTTSample;
@@ -1141,11 +1150,11 @@ GF_Err gf_webvtt_parser_parse(GF_WebVTTParser *parser);
 void gf_webvtt_parser_del(GF_WebVTTParser *parser);
 void gf_webvtt_parser_suspend(GF_WebVTTParser *vttparser);
 void gf_webvtt_parser_restart(GF_WebVTTParser *parser);
+void gf_webvtt_parser_force_state(GF_WebVTTParser *parser, GF_WebVTTParserState state);
 GF_Err gf_webvtt_parser_parse_payload(GF_WebVTTParser *parser, u64 start, u64 end, const char *vtt_pre, const char *vtt_cueid, const char *vtt_settings);
 GF_Err gf_webvtt_parser_flush(GF_WebVTTParser *parser);
 GF_Err gf_webvtt_parser_parse_ext(GF_WebVTTParser *parser, FILE *ext_file, Bool in_eos);
 
-#include <gpac/webvtt.h>
 void gf_webvtt_parser_cue_callback(GF_WebVTTParser *parser, void (*on_cue_read)(void *, GF_WebVTTCue *), void *udta);
 GF_Err gf_webvtt_merge_cues(GF_WebVTTParser *parser, u64 start, GF_List *cues);
 GF_Err gf_webvtt_parser_finalize(GF_WebVTTParser *parser, u64 duration);

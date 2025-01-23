@@ -56,6 +56,7 @@ extern "C" {
 enum {
 	GF_M2TS_META_ID3 	= GF_4CC('I','D','3',' '),
 	GF_M2TS_META_KLVA 	= GF_4CC('K','L','V','A'),
+	GF_M2TS_META_WVTT 	= GF_4CC('W','V','T','T'),
 };
 
 
@@ -298,6 +299,7 @@ typedef enum
 	GF_M2TS_DVB_SUBTITLE				= 0x154,
 	GF_M2TS_METADATA_ID3_HLS			= 0x155,
 	GF_M2TS_METADATA_ID3_KLVA			= 0x156,
+	GF_M2TS_METADATA_WVTT				= 0x157,
 
 } GF_M2TSStreamType;
 
